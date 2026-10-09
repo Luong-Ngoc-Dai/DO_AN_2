@@ -1,0 +1,9 @@
+tensorflow==2.20.0
+numpy==2.2.6
+Pillow==11.3.0
+scikit-image==0.25.2
+sewar==0.4.6
+pytest==8.4.2
+
+PyYAML==6.0.3
+matplotlib==3.10.7
