@@ -29,15 +29,15 @@ Ví dụ đường dẫn bạn đã cung cấp:
 ```text
 C:\Nam_4_HK1\Do_an_2\dataset\SIDD_Medium_Srgb\mnt\d\SIDD_Medium_Srgb\Data
   0001_001_S6_00100_00060_3200_L\
-    NOISY_SRGB_010.PNG
-    GT_SRGB_010.PNG
-    NOISY_SRGB_011.PNG
-    GT_SRGB_011.PNG
+    0001_NOISY_SRGB_010.PNG
+    0001_GT_SRGB_010.PNG
+    0001_NOISY_SRGB_011.PNG
+    0001_GT_SRGB_011.PNG
 ```
 
-Quét đệ quy, khóa ghép cặp = đường dẫn tương đối của scene instance + chỉ số ảnh. Kiểm tra thiếu partner, trùng index/kind, tên sRGB bất thường, RGB 8-bit và kích thước tương ứng. Mặc định yêu cầu **320 cặp**; cấu hình số khác chỉ khi bạn chủ động dùng subset. Không đọc RAW/MAT.
+Quét đệ quy, hỗ trợ cả `0157_NOISY_SRGB_010.PNG`/`0157_GT_SRGB_010.PNG` và `NOISY_SRGB_010.PNG`/`GT_SRGB_010.PNG`. Khóa ghép cặp = đường dẫn tương đối của scene instance + tiền tố số (giữ nguyên số 0 đầu, hoặc rỗng) + chỉ số cuối. Không ghép khác tiền tố hoặc khác thư mục, không đổi tên file gốc. Kiểm tra thiếu partner, trùng index/kind, tên sRGB bất thường, RGB 8-bit và kích thước tương ứng. Mặc định yêu cầu **320 cặp**; cấu hình số khác chỉ khi bạn chủ động dùng subset. Không đọc RAW/MAT.
 
-Chia **80%/20% số scene instances**, trước crop, seed 42. Khi số scene không chia hết cho 5, làm tròn số scene validation; tỷ lệ số cặp có thể không đúng 80/20 nếu các scene có số cặp khác nhau. `split.json` lưu seed, scene/index và đường dẫn tương đối, dùng `--data` để đổi root khi chuyển máy. Hai cặp cùng scene luôn cùng tập. Đây là scene **instance** (thư mục), không phải gộp mọi lần chụp của cùng physical scene.
+Chia **80%/20% số scene instances**, trước crop, seed 42. Khi số scene không chia hết cho 5, làm tròn số scene validation; tỷ lệ số cặp có thể không đúng 80/20 nếu các scene có số cặp khác nhau. `split.json` lưu seed, scene/prefix/index và đường dẫn tương đối, dùng `--data` để đổi root khi chuyển máy. Hai cặp cùng scene luôn cùng tập. Đây là scene **instance** (thư mục), không phải gộp mọi lần chụp của cùng physical scene.
 
 Train mặc định 4 random crops 128×128/cặp/epoch, thay đổi qua epoch, rotate 90°/flip đồng bộ NOISY/GT. Validation một center crop cố định/cặp. Không resize toàn ảnh. `tf.data` generator chỉ giữ một cặp uint8 đã decode + batch patch float32 + một batch prefetch; không cache toàn dataset. PNG vẫn phải decode toàn ảnh mỗi lần đọc, nhưng reuse cùng cặp cho nhiều crops, chỉ chuyển crop sang float32.
 
@@ -110,7 +110,7 @@ Lưu `metrics_per_image.csv`, `summary.json`: PSNR/SSIM/UQI noisy và denoised, 
 
 ```powershell
 $sceneDir = Join-Path $siddRoot '0001_001_S6_00100_00060_3200_L'
-.\.venv\Scripts\python.exe -m src.inference --model runs\baseline_01\best.keras --input "$sceneDir\NOISY_SRGB_010.PNG" --gt "$sceneDir\GT_SRGB_010.PNG" --tile-size 256 --overlap 64 --crop 500 500 128 128 --output runs\demo_01
+.\.venv\Scripts\python.exe -m src.inference --model runs\baseline_01\best.keras --input "$sceneDir\0001_NOISY_SRGB_010.PNG" --gt "$sceneDir\0001_GT_SRGB_010.PNG" --tile-size 256 --overlap 64 --crop 500 500 128 128 --output runs\demo_01
 ```
 
 Bỏ `--gt` nếu không có GT, bỏ `--crop` để dùng center crop. GT cần đúng cặp và cùng kích thước/căn chỉnh. Lưu NOISY/DENOISED/GT PNG và `comparison.png`: hàng full image, hàng crop cùng tọa độ, metric full image dưới hình. Không dùng ảnh chưa train để tuyên bố khử nhiễu hiệu quả.
@@ -152,4 +152,22 @@ Tests tạo PNG giả nhỏ trong thư mục tạm: ghép cặp, split 80/20 kh�
 
 ## Kết quả xác minh hiện tại
 
-Cloud Linux CPU, Python 3.12 / TensorFlow 2.20: 9 kiểm thử đã qua, có forward 128×128 và 256×256, smoke train bằng PNG giả, lưu/nạp checkpoint, tiled inference, metrics và hình so sánh. pip check không có dependency lỗi. Có DeprecationWarning từ sewar/Keras, không ảnh hưởng kết quả kiểm thử. Chưa chạy trên Windows/GPU/SIDD thật.
+Cloud Linux CPU, Python 3.12 / TensorFlow 2.20: Bộ kiểm thử baseline và filename/entrypoint regressions đã qua, có forward 128×128 và 256×256, smoke train bằng PNG giả, lưu/nạp checkpoint, tiled inference, metrics và hình so sánh. pip check không có dependency lỗi. Có DeprecationWarning từ sewar/Keras, không ảnh hưởng kết quả kiểm thử. Chưa chạy trên Windows/GPU/SIDD thật.
+
+## Kiểm tra bản sửa filename có tiền tố trên Windows
+
+Cập nhật source bằng `git pull` hoặc tải ZIP mới từ GitHub, rồi chạy từ root project:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m pytest -q -rs
+$siddRoot = 'C:\Nam_4_HK1\Do_an_2\dataset\SIDD_Medium_Srgb\mnt\d\SIDD_Medium_Srgb\Data'
+.\.venv\Scripts\python.exe -m src.dataset --data "$siddRoot" --expected-pairs 320 --seed 42 --output runs\sidd_split_prefixed.json
+$env:SIDD_DATA_ROOT = $siddRoot
+.\.venv\Scripts\python.exe -m pytest tests/test_dataset_filenames.py::test_real_sidd_320_pairs -q -rs
+```
+
+Test `test_synthetic_320_pairs_and_scene_split` dùng **320 cặp PNG giả** để kiểm tra bộ đếm và scene split; không xác minh dữ liệu SIDD của bạn. Test `test_real_sidd_320_pairs` chỉ chạy khi đặt `SIDD_DATA_ROOT`, nếu không sẽ báo **skipped**. Lệnh dataset xác minh đúng 320 cặp, RGB/kích thước, scene split và lưu danh sách; không training. Với 160 scene, mỗi scene 2 cặp: train 256 cặp/128 scene, validation 64 cặp/32 scene. Nếu lần quét trước bị lỗi tên file, tạo split mới rồi dùng `--split runs\sidd_split_prefixed.json` cho smoke/train sau này. Split cũ không tiền tố vẫn đọc được; split mới có trường `prefix`.
+
+Entrypoint CLI được kiểm tra với `--help`: `src.dataset`, `src.model`, `src.train`, `src.evaluate`, `src.inference`, `src.compare`, và năm wrapper ở root tương ứng. `src.metrics`/`metrics.py` là module thư viện, không phải CLI. Không tuyên bố bước kiểm tra 320 cặp SIDD thật thành công trong cloud khi dataset chỉ có trên Windows.

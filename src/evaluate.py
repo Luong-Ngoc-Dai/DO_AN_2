@@ -23,7 +23,7 @@ def evaluate(model, root, pairs, output, label="validation", tile_size=256, over
         noisy,gt = read_pair(root,pair,memory_budget_mb)
         prediction = tiled_denoise(model,noisy,tile_size,overlap,memory_budget_mb)
         baseline, scores = image_metrics(gt,noisy), image_metrics(gt,prediction)
-        row = {"scene":pair.scene,"index":pair.index,"noisy_file":pair.noisy,"gt_file":pair.gt}
+        row = {"scene":pair.scene,"prefix":pair.prefix,"index":pair.index,"noisy_file":pair.noisy,"gt_file":pair.gt}
         row.update({f"{key.lower()}_{name}": value for name,metrics in [("noisy",baseline),("denoised",scores)] for key,value in metrics.items()})
         row["psnr_improvement"] = scores["PSNR"]-baseline["PSNR"]
         row["ssim_improvement"] = scores["SSIM"]-baseline["SSIM"]

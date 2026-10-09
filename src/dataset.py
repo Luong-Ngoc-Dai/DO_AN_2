@@ -1,4 +1,4 @@
-"""Pair by relative scene directory + image index; stream cropped RGB pairs."""
+"""Pair by scene + optional numeric filename prefix + index; stream RGB crops."""
 import argparse
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -9,7 +9,10 @@ from PIL import Image
 import tensorflow as tf
 from .common import save_json, run_cli
 
-_PATTERN = re.compile(r"^(NOISY|GT)_SRGB_(\d+)\.png$", re.IGNORECASE)
+_PATTERN = re.compile(
+    r"^(?:(?P<prefix>\d+)_)?(?P<kind>NOISY|GT)_SRGB_(?P<index>\d+)\.png$",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -18,6 +21,7 @@ class Pair:
     index: str
     noisy: str
     gt: str
+    prefix: str = ""  # Empty for legacy filenames/saved splits without a prefix.
 
 
 def discover_pairs(root, expected_pairs=None):
@@ -33,19 +37,20 @@ def discover_pairs(root, expected_pairs=None):
             if path.suffix.lower() == ".png" and "SRGB" in path.name.upper():
                 raise ValueError(f"Unexpected SIDD filename: {path}")
             continue
-        kind, index = match.groups()
+        kind = match["kind"].upper()
+        prefix = match["prefix"] or ""
+        index = str(int(match["index"]))
         scene = path.parent.relative_to(root).as_posix()
-        key = (scene, str(int(index)))
+        key = (scene, prefix, index)
         record = entries.setdefault(key, {})
-        kind = kind.upper()
         if kind in record:
-            raise ValueError(f"Duplicate {kind} for scene/index {key}: {path}")
+            raise ValueError(f"Duplicate {kind} for scene/prefix/index {key}: {path}")
         record[kind] = path.relative_to(root).as_posix()
     pairs = []
-    for (scene, index), record in sorted(entries.items()):
+    for (scene, prefix, index), record in sorted(entries.items()):
         if set(record) != {"NOISY", "GT"}:
-            raise ValueError(f"Missing NOISY/GT partner for scene/index {(scene, index)}: {record}")
-        pairs.append(Pair(scene, index, record["NOISY"], record["GT"]))
+            raise ValueError(f"Missing NOISY/GT partner for scene/prefix/index {(scene, prefix, index)}: {record}")
+        pairs.append(Pair(scene, index, record["NOISY"], record["GT"], prefix))
     if not pairs:
         raise ValueError(f"No NOISY_SRGB/GT_SRGB pairs found in {root}; point to extracted sRGB Data directory")
     if expected_pairs is not None and len(pairs) != expected_pairs:
@@ -84,7 +89,7 @@ def split_pairs(pairs, val_fraction=0.2, seed=42):
 
 
 def save_split(path, root, train, validation, seed):
-    save_json(path, {"version": 1, "root": str(Path(root).resolve()), "seed": seed,
+    save_json(path, {"version": 2, "root": str(Path(root).resolve()), "seed": seed,
                      "protocol": "scene-instance split before crop; relative PNG paths",
                      "train": [asdict(p) for p in train], "validation": [asdict(p) for p in validation]})
 
@@ -96,11 +101,16 @@ def load_split(path, root=None):
     if not train or not val or {p.scene for p in train} & {p.scene for p in val}:
         raise ValueError("Invalid split: empty set or scene leakage")
     all_pairs = train + val
-    keys = [(p.scene, p.index) for p in all_pairs]
+    keys = [(p.scene, p.prefix, p.index) for p in all_pairs]
     if len(keys) != len(set(keys)):
         raise ValueError("Duplicate pair in saved split")
     for p in all_pairs:
-        for rel in (p.noisy, p.gt):
+        for kind, rel in (("NOISY", p.noisy), ("GT", p.gt)):
+            match = _PATTERN.fullmatch(Path(rel).name)
+            if (not match or match["kind"].upper() != kind
+                    or (match["prefix"] or "") != p.prefix
+                    or str(int(match["index"])) != p.index):
+                raise ValueError(f"Saved split scene/prefix/index does not match filename: {rel}")
             if Path(rel).is_absolute() or ".." in Path(rel).parts or Path(rel).parent.as_posix() != p.scene:
                 raise ValueError(f"Invalid relative scene path in split: {rel}")
     return Path(root or data["root"]), train, val, data["seed"]

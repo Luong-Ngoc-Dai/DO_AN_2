@@ -52,9 +52,14 @@ def print_summary(model):
     return info
 
 
-if __name__ == "__main__":
+def main():
     from .common import load_config
     p = argparse.ArgumentParser()
     p.add_argument("--config", default="configs/baseline.yaml")
     args = p.parse_args()
     print_summary(build_cae(load_config(args.config)["model"]["filters"]))
+
+
+if __name__ == "__main__":
+    from .common import run_cli
+    run_cli(main)
