@@ -24,8 +24,8 @@ class ValidationQuality(tf.keras.callbacks.Callback):
         clipped_mse = []
         for pair in self.pairs:
             w, h = pair_size(self.root, pair)
-            l, t = (w-self.size)//2, (h-self.size)//2
-            x, y = read_crop(self.root, pair, (l,t,l+self.size,t+self.size), self.budget)
+            left, top = (w-self.size)//2, (h-self.size)//2
+            x, y = read_crop(self.root, pair, (left, top, left+self.size, top+self.size), self.budget)
             prediction = np.clip(self.model(x[None], training=False).numpy()[0], 0, 1)
             rows.append(image_metrics(y, prediction))
             clipped_mse.append(float(np.mean((y-prediction)**2)))
@@ -37,45 +37,72 @@ class ValidationQuality(tf.keras.callbacks.Callback):
 
 
 def train_experiment(cfg, smoke=False, split_file=None):
+    # 1. Đọc cấu hình và chia scene trước khi tạo patch.
     cfg = copy.deepcopy(cfg)
     runtime = setup_runtime(cfg["seed"])
-    d, t = cfg["data"], cfg["training"]
-    discovered = discover_pairs(d["root"], d["expected_pairs"])
+    data_config = cfg["data"]
+    train_config = cfg["training"]
+    discovered = discover_pairs(data_config["root"], data_config["expected_pairs"])
     if split_file:
-        _, train, val, saved_seed = load_split(split_file, d["root"])
+        _, train, val, saved_seed = load_split(split_file, data_config["root"])
         if saved_seed != cfg["seed"] or set(discovered) != set(train+val):
             raise ValueError("Saved split does not match dataset/seed")
     else:
-        train, val = split_pairs(discovered, d["validation_fraction"], cfg["seed"])
+        train, val = split_pairs(discovered, data_config["validation_fraction"], cfg["seed"])
     print(f"Dataset: {len(discovered)} pairs; {len({p.scene for p in discovered})} scenes; train {len(train)}, validation {len(val)}")
-    output = Path(t["output"])
+    output = Path(train_config["output"])
     if smoke:
         output = output/"smoke"
         # Real-data smoke uses the saved split, but only enough train images for two batches.
-        train_run, val_run = train[:2*t["batch_size"]], val[:2]
-        t["epochs"], d["patches_per_image"] = 1, 1
+        train_run, val_run = train[:2*train_config["batch_size"]], val[:2]
+        train_config["epochs"], data_config["patches_per_image"] = 1, 1
     else:
         train_run, val_run = train, val
     output.mkdir(parents=True, exist_ok=True)
     if (output/"config.yaml").exists():
         raise ValueError(f"Experiment directory already used: {output}; choose a new --output to avoid overwriting")
-    ds = make_dataset(d["root"], train_run, d["patch_size"], t["batch_size"], True,
-                      cfg["seed"], d["patches_per_image"], d["memory_budget_mb"])
-    vd = make_dataset(d["root"], val_run, d["patch_size"], t["batch_size"], False,
-                      cfg["seed"], 1, d["memory_budget_mb"])
+    # 2. Train crop ngẫu nhiên; validation crop cố định, không cập nhật weights.
+    train_dataset = make_dataset(
+        data_config["root"], train_run, data_config["patch_size"],
+        train_config["batch_size"], training=True, seed=cfg["seed"],
+        patches_per_image=data_config["patches_per_image"],
+        memory_budget_mb=data_config["memory_budget_mb"],
+    )
+    validation_dataset = make_dataset(
+        data_config["root"], val_run, data_config["patch_size"],
+        train_config["batch_size"], training=False, seed=cfg["seed"],
+        patches_per_image=1, memory_budget_mb=data_config["memory_budget_mb"],
+    )
+    # 3. Tạo CAE, in summary và tối ưu MSE trên đầu ra residual chưa clip.
     model = build_cae(cfg["model"]["filters"])
     save_json(output/"complexity.json", print_summary(model))
-    model.compile(optimizer=tf.keras.optimizers.Adam(t["learning_rate"]), loss="mse")
-    save_split(output/"split.json", d["root"], train, val, cfg["seed"])
+    model.compile(optimizer=tf.keras.optimizers.Adam(train_config["learning_rate"]), loss="mse")
+    save_split(output/"split.json", data_config["root"], train, val, cfg["seed"])
     save_json(output/"run_manifest.json", {"smoke": smoke, "runtime": runtime,
               "train_used": [asdict(p) for p in train_run], "validation_used": [asdict(p) for p in val_run]})
     (output/"config.yaml").write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
-    callbacks = [ValidationQuality(d["root"], val_run, d["patch_size"], d["memory_budget_mb"]),
-                 tf.keras.callbacks.ModelCheckpoint(str(output/"best.keras"), monitor="val_psnr", mode="max", save_best_only=True),
-                 tf.keras.callbacks.EarlyStopping(monitor="val_psnr", mode="max", patience=t["early_stopping_patience"], restore_best_weights=True),
-                 tf.keras.callbacks.ReduceLROnPlateau(monitor="val_psnr", mode="max", factor=.5, patience=t["reduce_lr_patience"], min_lr=t["min_learning_rate"]),
-                 tf.keras.callbacks.CSVLogger(str(output/"training_history.csv"))]
-    history = model.fit(ds, validation_data=vd, epochs=t["epochs"], shuffle=False, callbacks=callbacks)
+    # 4. Tính val_psnr trước để checkpoint và scheduler đọc được metric này.
+    callbacks = [
+        ValidationQuality(data_config["root"], val_run, data_config["patch_size"],
+                          data_config["memory_budget_mb"]),
+        tf.keras.callbacks.ModelCheckpoint(
+            str(output/"best.keras"), monitor="val_psnr", mode="max", save_best_only=True,
+        ),
+        tf.keras.callbacks.EarlyStopping(
+            monitor="val_psnr", mode="max",
+            patience=train_config["early_stopping_patience"], restore_best_weights=True,
+        ),
+        tf.keras.callbacks.ReduceLROnPlateau(
+            monitor="val_psnr", mode="max", factor=.5,
+            patience=train_config["reduce_lr_patience"], min_lr=train_config["min_learning_rate"],
+        ),
+        tf.keras.callbacks.CSVLogger(str(output/"training_history.csv")),
+    ]
+    history = model.fit(
+        train_dataset, validation_data=validation_dataset,
+        epochs=train_config["epochs"], shuffle=False, callbacks=callbacks,
+    )
+    # 5. Lưu model và lịch sử để đánh giá/so sánh sau training.
     model.save(output/"restored_best.keras")
     save_json(output/"history.json", history.history)
     save_json(output/"training_summary.json", {"epochs_executed": len(history.epoch),

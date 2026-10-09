@@ -10,6 +10,7 @@ def image_metrics(reference, prediction):
         raise ValueError("Expected matching HxWx3 RGB images, at least 8x8")
     if not np.isfinite(a).all() or not np.isfinite(b).all() or min(a.min(), b.min()) < 0 or max(a.max(), b.max()) > 1:
         raise ValueError("Metrics require finite pixels in [0,1]")
+    # Mọi metric dùng cùng miền RGB [0,1]; ảnh giống hệt có PSNR = +∞.
     mse = np.mean((a-b)**2)
     return {"PSNR": float('inf') if mse == 0 else float(10*np.log10(1/mse)),
             "SSIM": float(structural_similarity(a, b, channel_axis=-1, data_range=1.0, win_size=7)),

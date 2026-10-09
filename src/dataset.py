@@ -41,6 +41,7 @@ def discover_pairs(root, expected_pairs=None):
         prefix = match["prefix"] or ""
         index = str(int(match["index"]))
         scene = path.parent.relative_to(root).as_posix()
+        # Ghép đúng scene + tiền tố + index; không đổi tên ảnh SIDD gốc.
         key = (scene, prefix, index)
         record = entries.setdefault(key, {})
         if kind in record:
@@ -79,6 +80,7 @@ def validate_pairs(root, pairs, patch_size):
 
 
 def split_pairs(pairs, val_fraction=0.2, seed=42):
+    """Chia theo scene trước crop để ảnh cùng scene không lọt vào hai tập."""
     scenes = sorted({p.scene for p in pairs})
     if len(scenes) < 2 or not 0 < val_fraction < 1:
         raise ValueError("Need at least two scene instances and validation fraction in (0,1)")
@@ -141,7 +143,7 @@ def read_crop(root, pair, box, memory_budget_mb=1024):
     left, top, right, bottom = box
     if not (0 <= left < right <= w and 0 <= top < bottom <= h):
         raise ValueError(f"Crop outside image: {box} / {(w,h)}")
-    # Pillow decodes one full PNG at a time; convert only the cropped pixels to float32.
+    # PNG phải decode toàn ảnh; chỉ chuyển vùng crop sang float32.
     crops = []
     for rel in (pair.noisy, pair.gt):
         with Image.open(Path(root)/rel) as im:
@@ -156,6 +158,7 @@ def make_dataset(root, pairs, patch_size=128, batch_size=8, training=False,
     validate_pairs(root, pairs, patch_size)
     for pair in pairs:
         check_memory(*pair_size(root, pair), memory_budget_mb, 12)
+    # Chỉ giữ một cặp ảnh và các patch của batch, không nạp toàn bộ SIDD vào RAM.
     epoch = 0
     count = len(pairs)*(patches_per_image if training else 1)
     def generate():
@@ -166,7 +169,7 @@ def make_dataset(root, pairs, patch_size=128, batch_size=8, training=False,
         for i in (rng.permutation(len(pairs)) if training else range(len(pairs))):
             pair = pairs[i]
             w, h = pair_size(root, pair)
-            # Decode one uint8 pair per image, reuse for all crops; never cache the dataset.
+            # Decode một cặp uint8, dùng lại cho nhiều crops rồi giải phóng.
             with Image.open(Path(root)/pair.noisy) as noisy, Image.open(Path(root)/pair.gt) as gt:
                 noisy.load()
                 gt.load()
