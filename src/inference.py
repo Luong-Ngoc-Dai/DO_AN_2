@@ -19,6 +19,7 @@ def validate_rgb(image):
 def denoise_array(model, image):
     x = validate_rgb(image)
     h, w = x.shape[:2]
+    # Pad cạnh phải/dưới về bội số 4; crop lại để giữ kích thước gốc.
     padded = np.pad(x, ((0,(-h)%4),(0,(-w)%4),(0,0)), mode="edge")
     return np.clip(model(padded[None], training=False).numpy()[0,:h,:w], 0, 1)
 
@@ -39,7 +40,7 @@ def tiled_denoise(model, image, tile_size=256, overlap=64, memory_budget_mb=2048
     check_memory(pw, ph, memory_budget_mb, 48)
     x = np.pad(x, ((0,ph-h),(0,pw-w),(0,0)), mode="edge")
     stride = tile_size-overlap
-    # Positive Hann window avoids zero-division at image edges.
+    # Trọng số Hann dương: blend vùng overlap, tránh đường ranh và chia cho 0.
     window = np.maximum(np.hanning(tile_size), 1e-3).astype(np.float32)
     weight = (window[:,None]*window[None,:])[...,None]
     accum = np.zeros_like(x)
@@ -49,7 +50,7 @@ def tiled_denoise(model, image, tile_size=256, overlap=64, memory_budget_mb=2048
             raw = model(x[None,top:top+tile_size,left:left+tile_size], training=False).numpy()[0]
             accum[top:top+tile_size,left:left+tile_size] += raw*weight
             weights[top:top+tile_size,left:left+tile_size] += weight
-    # Blend raw residual reconstructions first, then clip once, consistent with full-image metrics.
+    # Ghép đầu ra chưa clip, sau đó clip một lần như khi đánh giá ảnh đầy đủ.
     return np.clip(accum[:h,:w]/weights[:h,:w], 0, 1)
 
 

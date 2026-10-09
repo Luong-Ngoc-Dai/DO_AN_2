@@ -19,12 +19,18 @@ def evaluate(model, root, pairs, output, label="validation", tile_size=256, over
     output.mkdir(parents=True,exist_ok=True)
     pair_fingerprint = hashlib.sha256(json.dumps(sorted((p.scene,p.index,p.noisy,p.gt) for p in pairs)).encode()).hexdigest()
     rows = []
+    # Mỗi cặp được inference, so với GT rồi ghi một dòng metric.
     for i, pair in enumerate(pairs,1):
         noisy,gt = read_pair(root,pair,memory_budget_mb)
         prediction = tiled_denoise(model,noisy,tile_size,overlap,memory_budget_mb)
         baseline, scores = image_metrics(gt,noisy), image_metrics(gt,prediction)
         row = {"scene":pair.scene,"prefix":pair.prefix,"index":pair.index,"noisy_file":pair.noisy,"gt_file":pair.gt}
-        row.update({f"{key.lower()}_{name}": value for name,metrics in [("noisy",baseline),("denoised",scores)] for key,value in metrics.items()})
+        row["psnr_noisy"] = baseline["PSNR"]
+        row["ssim_noisy"] = baseline["SSIM"]
+        row["uqi_noisy"] = baseline["UQI"]
+        row["psnr_denoised"] = scores["PSNR"]
+        row["ssim_denoised"] = scores["SSIM"]
+        row["uqi_denoised"] = scores["UQI"]
         row["psnr_improvement"] = scores["PSNR"]-baseline["PSNR"]
         row["ssim_improvement"] = scores["SSIM"]-baseline["SSIM"]
         rows.append(row)
