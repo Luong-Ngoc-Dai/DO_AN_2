@@ -1,0 +1,252 @@
+{
+  "baseline": {
+    "input_shape": [
+      128,
+      128,
+      3
+    ],
+    "parameters": 241827,
+    "conv_macs": 1066401792,
+    "conv_flops": 2132803584,
+    "layers": [
+      {
+        "layer": "conv_1",
+        "shape": [
+          128,
+          128,
+          32
+        ],
+        "macs": 14155776
+      },
+      {
+        "layer": "conv_2",
+        "shape": [
+          64,
+          64,
+          32
+        ],
+        "macs": 37748736
+      },
+      {
+        "layer": "conv_3",
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "macs": 75497472
+      },
+      {
+        "layer": "conv_4",
+        "shape": [
+          32,
+          32,
+          64
+        ],
+        "macs": 37748736
+      },
+      {
+        "layer": "bottleneck",
+        "shape": [
+          32,
+          32,
+          96
+        ],
+        "macs": 56623104
+      },
+      {
+        "layer": "conv_6",
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "macs": 226492416
+      },
+      {
+        "layer": "conv_7",
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "macs": 150994944
+      },
+      {
+        "layer": "conv_8",
+        "shape": [
+          128,
+          128,
+          32
+        ],
+        "macs": 301989888
+      },
+      {
+        "layer": "conv_9",
+        "shape": [
+          128,
+          128,
+          32
+        ],
+        "macs": 150994944
+      },
+      {
+        "layer": "conv_10",
+        "shape": [
+          128,
+          128,
+          3
+        ],
+        "macs": 14155776
+      }
+    ],
+    "convention": "1 multiply-accumulate = 1 MAC = 2 FLOPs; convolution only; excludes bias, ReLU, upsampling, residual add and clipping",
+    "additions": [
+      {
+        "layer": "residual_reconstruction",
+        "shape": [
+          128,
+          128,
+          3
+        ],
+        "scalar_adds": 49152
+      }
+    ],
+    "scalar_adds": 49152,
+    "conv_plus_add_flops": 2132852736
+  },
+  "skip_cae": {
+    "input_shape": [
+      128,
+      128,
+      3
+    ],
+    "parameters": 241827,
+    "conv_macs": 1066401792,
+    "conv_flops": 2132803584,
+    "layers": [
+      {
+        "layer": "conv_1",
+        "shape": [
+          128,
+          128,
+          32
+        ],
+        "macs": 14155776
+      },
+      {
+        "layer": "conv_2",
+        "shape": [
+          64,
+          64,
+          32
+        ],
+        "macs": 37748736
+      },
+      {
+        "layer": "conv_3",
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "macs": 75497472
+      },
+      {
+        "layer": "conv_4",
+        "shape": [
+          32,
+          32,
+          64
+        ],
+        "macs": 37748736
+      },
+      {
+        "layer": "bottleneck",
+        "shape": [
+          32,
+          32,
+          96
+        ],
+        "macs": 56623104
+      },
+      {
+        "layer": "conv_6",
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "macs": 226492416
+      },
+      {
+        "layer": "conv_7",
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "macs": 150994944
+      },
+      {
+        "layer": "conv_8",
+        "shape": [
+          128,
+          128,
+          32
+        ],
+        "macs": 301989888
+      },
+      {
+        "layer": "conv_9",
+        "shape": [
+          128,
+          128,
+          32
+        ],
+        "macs": 150994944
+      },
+      {
+        "layer": "conv_10",
+        "shape": [
+          128,
+          128,
+          3
+        ],
+        "macs": 14155776
+      }
+    ],
+    "convention": "1 multiply-accumulate = 1 MAC = 2 FLOPs; convolution only; excludes bias, ReLU, upsampling, residual add and clipping",
+    "additions": [
+      {
+        "layer": "skip_half",
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "scalar_adds": 262144
+      },
+      {
+        "layer": "skip_full",
+        "shape": [
+          128,
+          128,
+          32
+        ],
+        "scalar_adds": 524288
+      },
+      {
+        "layer": "residual_reconstruction",
+        "shape": [
+          128,
+          128,
+          3
+        ],
+        "scalar_adds": 49152
+      }
+    ],
+    "scalar_adds": 835584,
+    "conv_plus_add_flops": 2133639168
+  }
+}

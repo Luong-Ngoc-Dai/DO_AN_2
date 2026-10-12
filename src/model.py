@@ -66,6 +66,45 @@ def build_cae(filters=None):
     return tf.keras.Model(inputs, output, name="residual_lightweight_cae")
 
 
+
+def build_skip_cae(filters=None):
+    """Model B: identical convolution budget, additive H/2 and H encoder skips."""
+    # Reuse the unchanged baseline layer declarations/configuration, but construct
+    # a separate graph. No baseline model or checkpoint is modified.
+    baseline = build_cae(filters)
+    if baseline.get_layer("conv_3").filters != baseline.get_layer("conv_7").filters:
+        raise ValueError("H/2 skip requires filters[2] == filters[6]")
+    if baseline.get_layer("conv_1").filters != baseline.get_layer("conv_9").filters:
+        raise ValueError("H skip requires filters[0] == filters[8]")
+    inputs = tf.keras.Input((None, None, 3), name="noisy_rgb")
+    x = inputs
+    encoder = {}
+    for layer in baseline.layers:
+        if isinstance(layer, tf.keras.layers.InputLayer):
+            continue
+        if layer.name == "residual_reconstruction":
+            x = tf.keras.layers.Add(name=layer.name)([inputs, x])
+            continue
+        x = layer.__class__.from_config(layer.get_config())(x)
+        if layer.name in ("conv_1", "conv_3"):
+            encoder[layer.name] = x
+        if layer.name in ("conv_7", "conv_9"):
+            source = encoder["conv_3" if layer.name == "conv_7" else "conv_1"]
+            if tuple(source.shape) != tuple(x.shape):
+                raise ValueError(f"Skip shape mismatch at {layer.name}")
+            x = tf.keras.layers.Add(name="skip_half" if layer.name == "conv_7" else "skip_full")([x, source])
+    return tf.keras.Model(inputs, x, name="skip_residual_cae")
+
+
+def build_model(config):
+    """Missing architecture preserves all legacy baseline YAML files."""
+    architecture = config.get("architecture", "baseline")
+    if architecture == "baseline":
+        return build_cae(config.get("filters"))
+    if architecture == "skip_cae":
+        return build_skip_cae(config.get("filters"))
+    raise ValueError(f"Unknown model architecture: {architecture}")
+
 def complexity(model, height=128, width=128):
     if height % 4 or width % 4:
         raise ValueError("Complexity input dimensions must be divisible by 4")
@@ -101,7 +140,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--config", default="configs/baseline.yaml")
     args = p.parse_args()
-    print_summary(build_cae(load_config(args.config)["model"]["filters"]))
+    print_summary(build_model(load_config(args.config)["model"]))
 
 
 if __name__ == "__main__":

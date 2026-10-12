@@ -89,3 +89,10 @@ $env:SIDD_DATA_ROOT = $siddRoot
 ```
 
 Cloud hiện không có SIDD thật/GPU: chỉ kiểm thử synthetic trên CPU, chưa xác nhận training SIDD. Hướng dẫn chi tiết về dữ liệu, protocol, so sánh model và tài nguyên: [docs/DETAILS.md](docs/DETAILS.md).
+
+## Model B — Skip Residual CAE
+
+Thí nghiệm độc lập với hai skip Add và global residual; chọn bằng
+`configs/skip_cae.yaml`. Model A và checkpoint cũ giữ nguyên kiến trúc.
+Hướng dẫn split dùng chung, resume, báo cáo MACs/FLOPs và giới hạn FPGA:
+[docs/MODEL_B.md](docs/MODEL_B.md).
