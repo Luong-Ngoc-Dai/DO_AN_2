@@ -2,8 +2,8 @@
 import argparse
 import io
 from pathlib import Path
-import tensorflow as tf
-from .model import build_cae, build_skip_cae, complexity
+from .model import build_cae, build_skip_cae, complexity, HARDWARE_FILTERS
+from .hardware import describe_layers, memory_report
 from .common import save_json, run_cli
 
 
@@ -11,16 +11,16 @@ def report(output, height=128, width=128):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     rows = {}
-    for label, builder in [('baseline', build_cae), ('skip_cae', build_skip_cae)]:
+    for label, builder in [('baseline', build_cae), ('skip_cae', build_skip_cae),
+                           ('hardware_cae', lambda: build_cae(HARDWARE_FILTERS))]:
         model = builder()
         info = complexity(model, height, width)
-        # Inspect concrete graph shapes without executing training.
-        shapes = tf.keras.Model(model.input, [l.output for l in model.layers])(tf.zeros((1, height, width, 3)))
-        additions = []
-        for layer, tensor in zip(model.layers, shapes):
-            if isinstance(layer, tf.keras.layers.Add):
-                count = int(tensor.shape[1]*tensor.shape[2]*tensor.shape[3])
-                additions.append({'layer': layer.name, 'shape': list(tensor.shape[1:]), 'scalar_adds': count})
+        layers = describe_layers(model, height, width)
+        info.update(memory_report(model, layers))
+        additions = [{'layer': row['name'], 'shape': row['output_shape'],
+                      'scalar_adds': row['output_elements']}
+                     for row in layers if row['operation'] == 'Add']
+        save_json(output/f'{label}_layers.json', layers)
         info['additions'] = additions
         info['scalar_adds'] = sum(item['scalar_adds'] for item in additions)
         info['conv_plus_add_flops'] = info['conv_flops'] + info['scalar_adds']

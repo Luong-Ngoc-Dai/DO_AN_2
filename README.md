@@ -96,3 +96,10 @@ Thí nghiệm độc lập với hai skip Add và global residual; chọn bằng
 `configs/skip_cae.yaml`. Model A và checkpoint cũ giữ nguyên kiến trúc.
 Hướng dẫn split dùng chung, resume, báo cáo MACs/FLOPs và giới hạn FPGA:
 [docs/MODEL_B.md](docs/MODEL_B.md).
+
+## Model C — Hardware-Friendly Lightweight CAE
+
+`configs/hardware_cae.yaml` tái sử dụng `build_cae()` với filters giảm,
+không encoder/decoder skip. Báo cáo A/B/C, hướng dẫn Windows/VS Code,
+export FP32 weights và lưu ý Verilog/KV260: [docs/MODEL_C.md](docs/MODEL_C.md).
+Chưa quantize hoặc synthesis; chưa khẳng định model phù hợp board.

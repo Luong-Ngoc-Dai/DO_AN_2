@@ -96,6 +96,9 @@ def build_skip_cae(filters=None):
     return tf.keras.Model(inputs, x, name="skip_residual_cae")
 
 
+HARDWARE_FILTERS = [16, 16, 32, 32, 48, 32, 32, 16, 16, 3]
+
+
 def build_model(config):
     """Missing architecture preserves all legacy baseline YAML files."""
     architecture = config.get("architecture", "baseline")
@@ -103,6 +106,11 @@ def build_model(config):
         return build_cae(config.get("filters"))
     if architecture == "skip_cae":
         return build_skip_cae(config.get("filters"))
+    if architecture == "hardware_cae":
+        filters = config.get("filters", HARDWARE_FILTERS)
+        if list(filters) != HARDWARE_FILTERS:
+            raise ValueError("hardware_cae requires the fixed Model C filters")
+        return build_cae(filters)
     raise ValueError(f"Unknown model architecture: {architecture}")
 
 def complexity(model, height=128, width=128):

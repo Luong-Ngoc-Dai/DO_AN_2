@@ -45,6 +45,8 @@ def train_experiment(cfg, smoke=False, split_file=None, resume=False):
     train_config = cfg["training"]
     discovered = discover_pairs(data_config["root"], data_config["expected_pairs"])
     split_file = split_file or data_config.get("split")
+    if cfg["model"].get("architecture") == "hardware_cae" and not split_file:
+        raise ValueError("Model C requires an existing shared split file")
     if resume and not split_file:
         split_file = Path(train_config["output"])/("smoke" if smoke else "")/"split.json"
     if split_file:
@@ -53,8 +55,9 @@ def train_experiment(cfg, smoke=False, split_file=None, resume=False):
             raise ValueError("Saved split does not match dataset/seed")
     else:
         train, val = split_pairs(discovered, data_config["validation_fraction"], cfg["seed"])
-    if cfg["model"].get("architecture") == "skip_cae" and data_config["expected_pairs"] == 320 and (len(train), len(val)) != (256, 64):
-        raise ValueError("Model B requires the original 256/64 SIDD split")
+    if cfg["model"].get("architecture") in ("skip_cae", "hardware_cae") and data_config["expected_pairs"] == 320 and (len(train), len(val)) != (256, 64):
+        label = "C" if cfg["model"].get("architecture") == "hardware_cae" else "B"
+        raise ValueError(f"Model {label} requires the original 256/64 SIDD split")
     print(f"Dataset: {len(discovered)} pairs; {len({p.scene for p in discovered})} scenes; train {len(train)}, validation {len(val)}")
     output = Path(train_config["output"])
     if smoke:
