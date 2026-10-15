@@ -45,8 +45,10 @@ def train_experiment(cfg, smoke=False, split_file=None, resume=False):
     train_config = cfg["training"]
     discovered = discover_pairs(data_config["root"], data_config["expected_pairs"])
     split_file = split_file or data_config.get("split")
-    if cfg["model"].get("architecture") == "hardware_cae" and not split_file:
-        raise ValueError("Model C requires an existing shared split file")
+    architecture = cfg["model"].get("architecture")
+    if architecture in ("hardware_cae", "paper_guided_cae") and not split_file:
+        label = "D" if architecture == "paper_guided_cae" else "C"
+        raise ValueError(f"Model {label} requires an existing shared split file")
     if resume and not split_file:
         split_file = Path(train_config["output"])/("smoke" if smoke else "")/"split.json"
     if split_file:
@@ -55,8 +57,8 @@ def train_experiment(cfg, smoke=False, split_file=None, resume=False):
             raise ValueError("Saved split does not match dataset/seed")
     else:
         train, val = split_pairs(discovered, data_config["validation_fraction"], cfg["seed"])
-    if cfg["model"].get("architecture") in ("skip_cae", "hardware_cae") and data_config["expected_pairs"] == 320 and (len(train), len(val)) != (256, 64):
-        label = "C" if cfg["model"].get("architecture") == "hardware_cae" else "B"
+    if cfg["model"].get("architecture") in ("skip_cae", "hardware_cae", "paper_guided_cae") and data_config["expected_pairs"] == 320 and (len(train), len(val)) != (256, 64):
+        label = {"skip_cae": "B", "hardware_cae": "C", "paper_guided_cae": "D"}[architecture]
         raise ValueError(f"Model {label} requires the original 256/64 SIDD split")
     print(f"Dataset: {len(discovered)} pairs; {len({p.scene for p in discovered})} scenes; train {len(train)}, validation {len(val)}")
     output = Path(train_config["output"])
@@ -103,7 +105,7 @@ def train_experiment(cfg, smoke=False, split_file=None, resume=False):
         save_json(output/"run_manifest.json", {"smoke": smoke, "runtime": runtime,
                   "train_used": [asdict(p) for p in train_run], "validation_used": [asdict(p) for p in val_run]})
         (output/"config.yaml").write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
-    with (output/"model_summary.txt").open("w") as summary_file:
+    with (output/"model_summary.txt").open("w", encoding="utf-8") as summary_file:
         model.summary(print_fn=lambda line: summary_file.write(line+"\n"))
     save_json(output/"complexity.json", print_summary(model))
     # 4. Tính val_psnr trước để checkpoint và scheduler đọc được metric này.

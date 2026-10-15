@@ -111,6 +111,9 @@ def build_model(config):
         if list(filters) != HARDWARE_FILTERS:
             raise ValueError("hardware_cae requires the fixed Model C filters")
         return build_cae(filters)
+    if architecture == "paper_guided_cae":
+        from .model_d import build_paper_guided_cae
+        return build_paper_guided_cae(config.get("filters"))
     raise ValueError(f"Unknown model architecture: {architecture}")
 
 def complexity(model, height=128, width=128):

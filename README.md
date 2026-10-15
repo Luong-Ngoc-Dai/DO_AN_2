@@ -103,3 +103,10 @@ Hướng dẫn split dùng chung, resume, báo cáo MACs/FLOPs và giới hạn 
 không encoder/decoder skip. Báo cáo A/B/C, hướng dẫn Windows/VS Code,
 export FP32 weights và lưu ý Verilog/KV260: [docs/MODEL_C.md](docs/MODEL_C.md).
 Chưa quantize hoặc synthesis; chưa khẳng định model phù hợp board.
+
+## Model D — 7-Conv paper-guided CAE
+
+Tích hợp source từ `model_d_addon.zip`; chọn `configs/model_d.yaml` với
+`model.architecture: paper_guided_cae`. Giữ nguyên A/B/C và dùng chung pipeline.
+Hướng dẫn PowerShell setup/test/train/resume/export và các sửa tương thích:
+[docs/MODEL_D.md](docs/MODEL_D.md).

@@ -26,7 +26,7 @@ def report(output, height=128, width=128):
         info['conv_plus_add_flops'] = info['conv_flops'] + info['scalar_adds']
         buffer = io.StringIO()
         model.summary(print_fn=lambda line: buffer.write(line+'\n'))
-        (output/f'{label}_summary.txt').write_text(buffer.getvalue())
+        (output/f'{label}_summary.txt').write_text(buffer.getvalue(), encoding='utf-8')
         rows[label] = info
     save_json(output/'comparison.json', rows)
     return rows
