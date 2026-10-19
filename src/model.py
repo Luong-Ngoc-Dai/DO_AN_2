@@ -114,6 +114,9 @@ def build_model(config):
     if architecture == "paper_guided_cae":
         from .model_d import build_paper_guided_cae
         return build_paper_guided_cae(config.get("filters"))
+    if architecture == "two_skip_cae":
+        from .model_e import build_two_skip_cae
+        return build_two_skip_cae(config.get("filters"))
     raise ValueError(f"Unknown model architecture: {architecture}")
 
 def complexity(model, height=128, width=128):

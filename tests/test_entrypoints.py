@@ -6,7 +6,7 @@ import sys
 
 def test_all_cli_help():
     commands = [[sys.executable, '-m', f'src.{module}', '--help']
-                for module in ('dataset','model','train','evaluate','inference','compare','architecture_report','export_weights','report_model_d','export_model_d')]
+                for module in ('dataset','model','train','evaluate','inference','compare','architecture_report','export_weights','report_model_d','export_model_d','report_model_e','export_model_e')]
     commands += [[sys.executable, f'{module}.py', '--help']
                  for module in ('dataset','model','train','evaluate','inference')]
     def check(command):

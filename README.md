@@ -110,3 +110,10 @@ Tích hợp source từ `model_d_addon.zip`; chọn `configs/model_d.yaml` với
 `model.architecture: paper_guided_cae`. Giữ nguyên A/B/C và dùng chung pipeline.
 Hướng dẫn PowerShell setup/test/train/resume/export và các sửa tương thích:
 [docs/MODEL_D.md](docs/MODEL_D.md).
+
+## Model E — Two-Skip Residual CAE
+
+`configs/model_e.yaml` chọn `two_skip_cae`: giữ bảy Conv của D, chỉ thêm Add từ
+Conv2 vào sau Conv4 và từ Conv1 vào sau Conv6; không distillation hoặc loss mới.
+Hướng dẫn PowerShell, báo cáo chi phí skip, resume/export và yêu cầu evaluator
+1.280 block: [docs/MODEL_E.md](docs/MODEL_E.md).

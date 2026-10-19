@@ -1,0 +1,436 @@
+[
+  {
+    "name": "noisy_rgb",
+    "operation": "InputLayer",
+    "sources": [],
+    "input_shapes": [],
+    "output_shape": [
+      128,
+      128,
+      3
+    ],
+    "output_elements": 49152
+  },
+  {
+    "name": "e_conv_1",
+    "operation": "Conv2D",
+    "sources": [
+      "noisy_rgb"
+    ],
+    "input_shapes": [
+      [
+        128,
+        128,
+        3
+      ]
+    ],
+    "output_shape": [
+      128,
+      128,
+      16
+    ],
+    "output_elements": 262144,
+    "kernel_size": [
+      3,
+      3
+    ],
+    "strides": [
+      1,
+      1
+    ],
+    "padding": "same",
+    "padding_top_bottom": [
+      1,
+      1
+    ],
+    "padding_left_right": [
+      1,
+      1
+    ],
+    "input_channels": 3,
+    "output_channels": 16,
+    "activation": "relu",
+    "kernel_layout": "HWIO",
+    "parameters": 448
+  },
+  {
+    "name": "e_conv_2",
+    "operation": "Conv2D",
+    "sources": [
+      "e_conv_1"
+    ],
+    "input_shapes": [
+      [
+        128,
+        128,
+        16
+      ]
+    ],
+    "output_shape": [
+      64,
+      64,
+      32
+    ],
+    "output_elements": 131072,
+    "kernel_size": [
+      3,
+      3
+    ],
+    "strides": [
+      2,
+      2
+    ],
+    "padding": "same",
+    "padding_top_bottom": [
+      0,
+      1
+    ],
+    "padding_left_right": [
+      0,
+      1
+    ],
+    "input_channels": 16,
+    "output_channels": 32,
+    "activation": "relu",
+    "kernel_layout": "HWIO",
+    "parameters": 4640
+  },
+  {
+    "name": "e_conv_3",
+    "operation": "Conv2D",
+    "sources": [
+      "e_conv_2"
+    ],
+    "input_shapes": [
+      [
+        64,
+        64,
+        32
+      ]
+    ],
+    "output_shape": [
+      32,
+      32,
+      48
+    ],
+    "output_elements": 49152,
+    "kernel_size": [
+      3,
+      3
+    ],
+    "strides": [
+      2,
+      2
+    ],
+    "padding": "same",
+    "padding_top_bottom": [
+      0,
+      1
+    ],
+    "padding_left_right": [
+      0,
+      1
+    ],
+    "input_channels": 32,
+    "output_channels": 48,
+    "activation": "relu",
+    "kernel_layout": "HWIO",
+    "parameters": 13872
+  },
+  {
+    "name": "e_upsample_1",
+    "operation": "UpSampling2D",
+    "sources": [
+      "e_conv_3"
+    ],
+    "input_shapes": [
+      [
+        32,
+        32,
+        48
+      ]
+    ],
+    "output_shape": [
+      64,
+      64,
+      48
+    ],
+    "output_elements": 196608,
+    "scale": [
+      2,
+      2
+    ],
+    "interpolation": "nearest"
+  },
+  {
+    "name": "e_conv_4",
+    "operation": "Conv2D",
+    "sources": [
+      "e_upsample_1"
+    ],
+    "input_shapes": [
+      [
+        64,
+        64,
+        48
+      ]
+    ],
+    "output_shape": [
+      64,
+      64,
+      32
+    ],
+    "output_elements": 131072,
+    "kernel_size": [
+      3,
+      3
+    ],
+    "strides": [
+      1,
+      1
+    ],
+    "padding": "same",
+    "padding_top_bottom": [
+      1,
+      1
+    ],
+    "padding_left_right": [
+      1,
+      1
+    ],
+    "input_channels": 48,
+    "output_channels": 32,
+    "activation": "relu",
+    "kernel_layout": "HWIO",
+    "parameters": 13856
+  },
+  {
+    "name": "e_skip_half",
+    "operation": "Add",
+    "sources": [
+      "e_conv_4",
+      "e_conv_2"
+    ],
+    "input_shapes": [
+      [
+        64,
+        64,
+        32
+      ],
+      [
+        64,
+        64,
+        32
+      ]
+    ],
+    "output_shape": [
+      64,
+      64,
+      32
+    ],
+    "output_elements": 131072
+  },
+  {
+    "name": "e_conv_5",
+    "operation": "Conv2D",
+    "sources": [
+      "e_skip_half"
+    ],
+    "input_shapes": [
+      [
+        64,
+        64,
+        32
+      ]
+    ],
+    "output_shape": [
+      64,
+      64,
+      16
+    ],
+    "output_elements": 65536,
+    "kernel_size": [
+      3,
+      3
+    ],
+    "strides": [
+      1,
+      1
+    ],
+    "padding": "same",
+    "padding_top_bottom": [
+      1,
+      1
+    ],
+    "padding_left_right": [
+      1,
+      1
+    ],
+    "input_channels": 32,
+    "output_channels": 16,
+    "activation": "relu",
+    "kernel_layout": "HWIO",
+    "parameters": 4624
+  },
+  {
+    "name": "e_upsample_2",
+    "operation": "UpSampling2D",
+    "sources": [
+      "e_conv_5"
+    ],
+    "input_shapes": [
+      [
+        64,
+        64,
+        16
+      ]
+    ],
+    "output_shape": [
+      128,
+      128,
+      16
+    ],
+    "output_elements": 262144,
+    "scale": [
+      2,
+      2
+    ],
+    "interpolation": "nearest"
+  },
+  {
+    "name": "e_conv_6",
+    "operation": "Conv2D",
+    "sources": [
+      "e_upsample_2"
+    ],
+    "input_shapes": [
+      [
+        128,
+        128,
+        16
+      ]
+    ],
+    "output_shape": [
+      128,
+      128,
+      16
+    ],
+    "output_elements": 262144,
+    "kernel_size": [
+      3,
+      3
+    ],
+    "strides": [
+      1,
+      1
+    ],
+    "padding": "same",
+    "padding_top_bottom": [
+      1,
+      1
+    ],
+    "padding_left_right": [
+      1,
+      1
+    ],
+    "input_channels": 16,
+    "output_channels": 16,
+    "activation": "relu",
+    "kernel_layout": "HWIO",
+    "parameters": 2320
+  },
+  {
+    "name": "e_skip_full",
+    "operation": "Add",
+    "sources": [
+      "e_conv_6",
+      "e_conv_1"
+    ],
+    "input_shapes": [
+      [
+        128,
+        128,
+        16
+      ],
+      [
+        128,
+        128,
+        16
+      ]
+    ],
+    "output_shape": [
+      128,
+      128,
+      16
+    ],
+    "output_elements": 262144
+  },
+  {
+    "name": "e_conv_7",
+    "operation": "Conv2D",
+    "sources": [
+      "e_skip_full"
+    ],
+    "input_shapes": [
+      [
+        128,
+        128,
+        16
+      ]
+    ],
+    "output_shape": [
+      128,
+      128,
+      3
+    ],
+    "output_elements": 49152,
+    "kernel_size": [
+      3,
+      3
+    ],
+    "strides": [
+      1,
+      1
+    ],
+    "padding": "same",
+    "padding_top_bottom": [
+      1,
+      1
+    ],
+    "padding_left_right": [
+      1,
+      1
+    ],
+    "input_channels": 16,
+    "output_channels": 3,
+    "activation": "linear",
+    "kernel_layout": "HWIO",
+    "parameters": 435
+  },
+  {
+    "name": "e_residual_add",
+    "operation": "Add",
+    "sources": [
+      "noisy_rgb",
+      "e_conv_7"
+    ],
+    "input_shapes": [
+      [
+        128,
+        128,
+        3
+      ],
+      [
+        128,
+        128,
+        3
+      ]
+    ],
+    "output_shape": [
+      128,
+      128,
+      3
+    ],
+    "output_elements": 49152
+  }
+]

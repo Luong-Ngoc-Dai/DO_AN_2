@@ -1,0 +1,267 @@
+{
+  "input_shape": [
+    128,
+    128,
+    3
+  ],
+  "parameters": 40195,
+  "conv_macs": 160432128,
+  "conv_flops": 320864256,
+  "layers": [
+    {
+      "layer": "e_conv_1",
+      "shape": [
+        128,
+        128,
+        16
+      ],
+      "macs": 7077888
+    },
+    {
+      "layer": "e_conv_2",
+      "shape": [
+        64,
+        64,
+        32
+      ],
+      "macs": 18874368
+    },
+    {
+      "layer": "e_conv_3",
+      "shape": [
+        32,
+        32,
+        48
+      ],
+      "macs": 14155776
+    },
+    {
+      "layer": "e_conv_4",
+      "shape": [
+        64,
+        64,
+        32
+      ],
+      "macs": 56623104
+    },
+    {
+      "layer": "e_conv_5",
+      "shape": [
+        64,
+        64,
+        16
+      ],
+      "macs": 18874368
+    },
+    {
+      "layer": "e_conv_6",
+      "shape": [
+        128,
+        128,
+        16
+      ],
+      "macs": 37748736
+    },
+    {
+      "layer": "e_conv_7",
+      "shape": [
+        128,
+        128,
+        3
+      ],
+      "macs": 7077888
+    }
+  ],
+  "convention": "1 multiply-accumulate = 1 MAC = 2 FLOPs; convolution only; excludes bias, ReLU, upsampling, residual add and clipping",
+  "conv2d_count": 7,
+  "kernel_elements": 40032,
+  "bias_elements": 163,
+  "weight_storage_bytes": {
+    "FP32": 160128,
+    "INT16": 80064,
+    "INT8": 40032
+  },
+  "bias_storage_bytes": {
+    "FP32": 652,
+    "INT16": 326,
+    "INT8": 163
+  },
+  "parameter_storage_bytes": {
+    "FP32": 160780,
+    "INT16": 80390,
+    "INT8": 40195
+  },
+  "largest_feature_map": {
+    "layer": "e_conv_1",
+    "shape": [
+      128,
+      128,
+      16
+    ],
+    "elements": 262144,
+    "storage_bytes": {
+      "FP32": 1048576,
+      "INT16": 524288,
+      "INT8": 262144
+    }
+  },
+  "largest_conv_feature_map": {
+    "layer": "e_conv_1",
+    "shape": [
+      128,
+      128,
+      16
+    ],
+    "elements": 262144,
+    "storage_bytes": {
+      "FP32": 1048576,
+      "INT16": 524288,
+      "INT8": 262144
+    }
+  },
+  "intermediate_memory": {
+    "peak_live_elements": 835584,
+    "peak_live_storage_bytes": {
+      "FP32": 3342336,
+      "INT16": 1671168,
+      "INT8": 835584
+    },
+    "timeline": [
+      {
+        "layer": "noisy_rgb",
+        "live_elements_before_release": 49152
+      },
+      {
+        "layer": "e_conv_1",
+        "live_elements_before_release": 311296
+      },
+      {
+        "layer": "e_conv_2",
+        "live_elements_before_release": 442368
+      },
+      {
+        "layer": "e_conv_3",
+        "live_elements_before_release": 491520
+      },
+      {
+        "layer": "e_upsample_1",
+        "live_elements_before_release": 688128
+      },
+      {
+        "layer": "e_conv_4",
+        "live_elements_before_release": 770048
+      },
+      {
+        "layer": "e_skip_half",
+        "live_elements_before_release": 704512
+      },
+      {
+        "layer": "e_conv_5",
+        "live_elements_before_release": 507904
+      },
+      {
+        "layer": "e_upsample_2",
+        "live_elements_before_release": 638976
+      },
+      {
+        "layer": "e_conv_6",
+        "live_elements_before_release": 835584
+      },
+      {
+        "layer": "e_skip_full",
+        "live_elements_before_release": 835584
+      },
+      {
+        "layer": "e_conv_7",
+        "live_elements_before_release": 360448
+      },
+      {
+        "layer": "e_residual_add",
+        "live_elements_before_release": 147456
+      }
+    ],
+    "assumptions": "Batch 1; sequential full-frame layer schedule; allocate output before releasing last-used inputs; no in-place Add/ReLU or fused upsample; retains noisy input and encoder skips until Add. Excludes weights, convolution line buffers, accumulators, DMA, alignment, training gradients and allocator workspace. INT storage assumes uniform hypothetical element widths, not a calibrated quantized implementation."
+  },
+  "additions": [
+    {
+      "name": "e_skip_half",
+      "sources": [
+        "e_conv_4",
+        "e_conv_2"
+      ],
+      "shape": [
+        64,
+        64,
+        32
+      ],
+      "scalar_adds": 131072
+    },
+    {
+      "name": "e_skip_full",
+      "sources": [
+        "e_conv_6",
+        "e_conv_1"
+      ],
+      "shape": [
+        128,
+        128,
+        16
+      ],
+      "scalar_adds": 262144
+    },
+    {
+      "name": "e_residual_add",
+      "sources": [
+        "noisy_rgb",
+        "e_conv_7"
+      ],
+      "shape": [
+        128,
+        128,
+        3
+      ],
+      "scalar_adds": 49152
+    }
+  ],
+  "scalar_adds": 442368,
+  "extra_skip_scalar_adds": 393216,
+  "conv_plus_add_flops": 321306624,
+  "skip_feature_maps": [
+    {
+      "source": "e_conv_2",
+      "used_by": "e_skip_half",
+      "shape": [
+        64,
+        64,
+        32
+      ],
+      "elements": 131072,
+      "storage_bytes": {
+        "FP32": 524288,
+        "INT16": 262144,
+        "INT8": 131072
+      }
+    },
+    {
+      "source": "e_conv_1",
+      "used_by": "e_skip_full",
+      "shape": [
+        128,
+        128,
+        16
+      ],
+      "elements": 262144,
+      "storage_bytes": {
+        "FP32": 1048576,
+        "INT16": 524288,
+        "INT8": 262144
+      }
+    }
+  ],
+  "skip_feature_storage_bytes": {
+    "FP32": 1572864,
+    "INT16": 786432,
+    "INT8": 393216
+  },
+  "skip_storage_note": "Sum of two retained full-frame encoder maps, batch 1; not total FPGA memory. INT8 storage is hypothetical; no quantization is performed."
+}
