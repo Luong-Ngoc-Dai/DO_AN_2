@@ -9,7 +9,7 @@ training leaves no internal held-out scene; falsely reporting a validation
 PSNR would leak the evaluation set. `src/train_full_sidd.py` therefore trains
 for a fixed 100 epochs with **no early stopping, no validation callbacks, and
 no validation-based model selection**. It saves `final.keras` from the last
-epoch and logs only training loss.
+epoch and logs training loss plus diagnostic training-crop PSNR/SSIM (no validation).
 
 ## Run on Windows / PowerShell
 
@@ -54,3 +54,42 @@ that comparing many configurations or selecting the best architecture based
 on this set also creates evaluation-set selection bias. For a clean final
 benchmark, use the separate official SIDD Benchmark submission or a genuinely
 untouched external holdout.
+
+
+## Resume an interrupted full-320 run
+
+A later update adds `--resume`, using `latest.keras` (which Keras saves
+after each completed epoch) and `training_history.csv` to infer the starting
+epoch. The optimizer state is loaded from the complete Keras model checkpoint.
+The loader refuses a resume if the optimizer iteration counter does not equal
+completed epochs × steps/epoch or if configuration fields differ (apart from
+the requested total epoch count). The training patches are freshly sampled
+again, so resumed execution is NOT guaranteed bitwise identical to an
+uninterrupted TensorFlow run.
+
+You can stop the PowerShell process with Ctrl+C after an epoch has finished.
+First back up `runs/model_e_320pairs/` and update the local source. Resume:
+
+```powershell
+& $py -m src.train_full_sidd --config configs\model_e_320pairs.yaml --data "$siddRoot" --output runs\model_e_320pairs --resume
+```
+
+This DOES NOT resume an in-progress batch or partial epoch, and it cannot
+resume if the checkpoint and history disagree. Do not delete old checkpoints.
+A full run that reaches 100 epochs already has `final.keras` and should
+not be resumed unless the total number of epochs is explicitly raised, subject
+to `src/common.py` currently enforcing `epochs <= 100`.
+
+## Diagnostic quality monitoring
+
+New runs print `train_psnr` and `train_ssim` at the end of each epoch.
+These are calculated on four **fixed, center-cropped TRAIN images**, NOT on
+held-out validation images, and saved to `training_quality.csv`.
+The external `ValidationNoisyBlocksSrgb.mat` and
+`ValidationGtBlocksSrgb.mat` are not used to monitor progress or choose
+checkpoints. Existing runs may begin diagnostic logging at the resumed epoch,
+so earlier epochs will not have these diagnostic scores.
+
+Existing active Python processes use the code loaded when they started.
+Finish/interrupt the current process before starting a separate resume
+command; do not update local files mid-run.
