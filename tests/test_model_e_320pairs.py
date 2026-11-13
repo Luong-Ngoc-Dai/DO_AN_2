@@ -32,7 +32,10 @@ def test_full_sidd_smoke_no_validation(tmp_path):
     assert manifest["model_selection"].startswith("final epoch")
     rows = list(csv.DictReader((result / "training_history.csv").open()))
     assert len(rows) == 1
-    assert "val_loss" not in rows[0] and "val_psnr" not in rows[0]
+    # Keras CSVLogger may emit an empty validation column as "NA", even
+    # when model.fit() was called without validation_data.
+    assert "val_psnr" not in rows[0]
+    assert rows[0].get("val_loss", "NA") in ("NA", "", "None")
     model = tf.keras.models.load_model(result / "final.keras", compile=False)
     assert model.count_params() == 40195
     assert (result / "latest.keras").exists()
